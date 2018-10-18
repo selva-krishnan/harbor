@@ -61,7 +61,12 @@ func KeyJobStats(namespace string, jobID string) string {
 	return fmt.Sprintf("%s%s:%s", KeyNamespacePrefix(namespace), "job_stats", jobID)
 }
 
-// KeyJobCtlCommands give the key for publishing ctl commands like 'stop' etc.
+// KeyJobCtlCommands returns the key for publishing ctl commands like 'stop' etc.
 func KeyJobCtlCommands(namespace string, jobID string) string {
 	return fmt.Sprintf("%s%s:%s", KeyNamespacePrefix(namespace), "ctl_commands", jobID)
+}
+
+// KeyUpstreamJobAndExecutions returns the key for persisting executions.
+func KeyUpstreamJobAndExecutions(namespace, upstreamJobID string) string {
+	return fmt.Sprintf("%s%s:%s", KeyNamespacePrefix(namespace), "executions", upstreamJobID)
 }

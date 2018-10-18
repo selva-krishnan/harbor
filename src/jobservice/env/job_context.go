@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/goharbor/harbor/src/jobservice/logger"
+	"github.com/goharbor/harbor/src/jobservice/models"
 )
 
 // JobContext is combination of BaseContext and other job specified resources.
@@ -53,6 +54,9 @@ type JobContext interface {
 
 	// Return the logger
 	GetLogger() logger.Interface
+
+	// Launch sub jobs
+	LaunchJob(req models.JobRequest) (models.JobStats, error)
 }
 
 // JobData defines job context dependencies.

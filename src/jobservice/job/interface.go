@@ -2,7 +2,10 @@
 
 package job
 
-import "github.com/goharbor/harbor/src/jobservice/env"
+import (
+	"github.com/goharbor/harbor/src/jobservice/env"
+	"github.com/goharbor/harbor/src/jobservice/models"
+)
 
 // CheckOPCmdFunc is the function to check if the related operation commands
 // like STOP or CANCEL is fired for the specified job. If yes, return the
@@ -11,6 +14,9 @@ type CheckOPCmdFunc func() (string, bool)
 
 // CheckInFunc is designed for job to report more detailed progress info
 type CheckInFunc func(message string)
+
+// LaunchJobFunc is designed to launch sub jobs in the job
+type LaunchJobFunc func(req models.JobRequest) (models.JobStats, error)
 
 // Interface defines the related injection and run entry methods.
 type Interface interface {

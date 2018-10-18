@@ -14,6 +14,14 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
+// CtlContextKey is used to keep controller reference in the system context
+type CtlContextKey string
+
+const (
+	// CtlKeyOfLaunchJobFunc is context key to keep the ctl launch job func
+	CtlKeyOfLaunchJobFunc CtlContextKey = "controller_launch_job_func"
+)
+
 // IsEmptyStr check if the specified str is empty (len ==0) after triming prefix and suffix spaces.
 func IsEmptyStr(str string) bool {
 	return len(strings.TrimSpace(str)) == 0

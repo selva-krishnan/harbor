@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/goharbor/harbor/src/jobservice/errs"
+	"github.com/goharbor/harbor/src/jobservice/logger"
 	"github.com/gorilla/mux"
 )
 
@@ -53,6 +54,7 @@ func (br *BaseRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Do auth
 	if err := br.authenticator.DoAuth(req); err != nil {
 		authErr := errs.UnauthorizedError(err)
+		logger.Errorf("Serve http request '%s %s' failed with error: %s", req.Method, req.URL.String(), authErr.Error())
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(authErr.Error()))
 		return

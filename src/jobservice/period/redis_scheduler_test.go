@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goharbor/harbor/src/jobservice/opm"
+
 	"github.com/goharbor/harbor/src/jobservice/env"
 	"github.com/goharbor/harbor/src/jobservice/tests"
 	"github.com/goharbor/harbor/src/jobservice/utils"
@@ -15,7 +17,11 @@ import (
 var redisPool = tests.GiveMeRedisPool()
 
 func TestScheduler(t *testing.T) {
-	scheduler := myPeriodicScheduler()
+	statsManager := opm.NewRedisJobStatsManager(context.Background(), tests.GiveMeTestNamespace(), redisPool)
+	statsManager.Start()
+	defer statsManager.Shutdown()
+
+	scheduler := myPeriodicScheduler(statsManager)
 	params := make(map[string]interface{})
 	params["image"] = "testing:v1"
 	id, runAt, err := scheduler.Schedule("fake_job", params, "5 * * * * *")
@@ -51,7 +57,11 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestPubFunc(t *testing.T) {
-	scheduler := myPeriodicScheduler()
+	statsManager := opm.NewRedisJobStatsManager(context.Background(), tests.GiveMeTestNamespace(), redisPool)
+	statsManager.Start()
+	defer statsManager.Shutdown()
+
+	scheduler := myPeriodicScheduler(statsManager)
 	p := &PeriodicJobPolicy{
 		PolicyID: "fake_ID",
 		JobName:  "fake_job",
@@ -71,7 +81,7 @@ func TestPubFunc(t *testing.T) {
 	}
 }
 
-func myPeriodicScheduler() *RedisPeriodicScheduler {
+func myPeriodicScheduler(statsManager opm.JobStatsManager) *RedisPeriodicScheduler {
 	sysCtx := context.Background()
 	ctx := &env.Context{
 		SystemContext: sysCtx,
@@ -79,5 +89,5 @@ func myPeriodicScheduler() *RedisPeriodicScheduler {
 		ErrorChan:     make(chan error, 1),
 	}
 
-	return NewRedisPeriodicScheduler(ctx, tests.GiveMeTestNamespace(), redisPool)
+	return NewRedisPeriodicScheduler(ctx, tests.GiveMeTestNamespace(), redisPool, statsManager)
 }

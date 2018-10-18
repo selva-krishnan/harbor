@@ -83,7 +83,7 @@ func ClearAll(namespace string, conn redis.Conn) error {
 func getRedisHost() string {
 	redisHost := os.Getenv(testingRedisHost)
 	if redisHost == "" {
-		redisHost = "10.160.178.186" // for local test
+		redisHost = "127.0.0.1" // for local test
 	}
 
 	return redisHost

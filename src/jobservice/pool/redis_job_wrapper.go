@@ -3,15 +3,21 @@
 package pool
 
 import (
+	"errors"
 	"fmt"
+	"runtime"
 	"time"
+
+	"github.com/goharbor/harbor/src/jobservice/job/impl"
 
 	"github.com/gocraft/work"
 	"github.com/goharbor/harbor/src/jobservice/env"
 	"github.com/goharbor/harbor/src/jobservice/errs"
 	"github.com/goharbor/harbor/src/jobservice/job"
 	"github.com/goharbor/harbor/src/jobservice/logger"
+	"github.com/goharbor/harbor/src/jobservice/models"
 	"github.com/goharbor/harbor/src/jobservice/opm"
+	"github.com/goharbor/harbor/src/jobservice/utils"
 )
 
 // RedisJob is a job wrapper to wrap the job.Interface to the style which can be recognized by the redis pool.
@@ -66,6 +72,12 @@ func (rj *RedisJob) Run(j *work.Job) error {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("Runtime error: %s", r)
+
+			// Log the stack
+			buf := make([]byte, 1<<16)
+			size := runtime.Stack(buf, false)
+			logger.Errorf("Runtime error happened when executing job %s:%s: %s", j.Name, j.ID, buf[0:size])
+
 			// record runtime error status
 			rj.jobFailed(j.ID)
 		}
@@ -89,6 +101,7 @@ func (rj *RedisJob) Run(j *work.Job) error {
 
 	// Start to run
 	rj.jobRunning(j.ID)
+
 	// Inject data
 	err = runningJob.Run(execContext, j.Args)
 
@@ -162,6 +175,49 @@ func (rj *RedisJob) buildContext(j *work.Job) (env.JobContext, error) {
 	}
 
 	jData.ExtraData["checkInFunc"] = checkInFuncFactory(j.ID)
+
+	launchJobFuncFactory := func(jobID string) job.LaunchJobFunc {
+		funcIntf := rj.context.SystemContext.Value(utils.CtlKeyOfLaunchJobFunc)
+		return func(jobReq models.JobRequest) (models.JobStats, error) {
+			launchJobFunc, ok := funcIntf.(job.LaunchJobFunc)
+			if !ok {
+				return models.JobStats{}, errors.New("no launch job func provided")
+			}
+
+			jobName := ""
+			if jobReq.Job != nil {
+				jobName = jobReq.Job.Name
+			}
+			if j.Name == jobName {
+				return models.JobStats{}, errors.New("infinite job creating loop may exist")
+			}
+
+			res, err := launchJobFunc(jobReq)
+			if err != nil {
+				return models.JobStats{}, err
+			}
+
+			if err := rj.statsManager.Update(jobID, "multiple_executions", true); err != nil {
+				logger.Error(err)
+			}
+
+			if err := rj.statsManager.Update(res.Stats.JobID, "upstream_job_id", jobID); err != nil {
+				logger.Error(err)
+			}
+
+			rj.statsManager.AttachExecution(jobID, res.Stats.JobID)
+
+			logger.Infof("Launch sub job %s:%s for upstream job %s", res.Stats.JobName, res.Stats.JobID, jobID)
+			return res, nil
+		}
+	}
+
+	jData.ExtraData["launchJobFunc"] = launchJobFuncFactory(j.ID)
+
+	// Use default context
+	if rj.context.JobContext == nil {
+		rj.context.JobContext = impl.NewDefaultContext(rj.context.SystemContext)
+	}
 
 	return rj.context.JobContext.Build(jData)
 }

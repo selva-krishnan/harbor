@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/gocraft/work"
 )
@@ -46,21 +45,6 @@ func RedisKeyLastPeriodicEnqueue(namespace string) string {
 // RedisKeyDead returns key of the dead jobs.
 func RedisKeyDead(namespace string) string {
 	return RedisNamespacePrefix(namespace) + "dead"
-}
-
-var nowMock int64
-
-// NowEpochSeconds ...
-func NowEpochSeconds() int64 {
-	if nowMock != 0 {
-		return nowMock
-	}
-	return time.Now().Unix()
-}
-
-// SetNowEpochSecondsMock ...
-func SetNowEpochSecondsMock(t int64) {
-	nowMock = t
 }
 
 // SerializeJob encodes work.Job to json data.

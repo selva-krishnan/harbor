@@ -2,9 +2,12 @@
 package period
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/goharbor/harbor/src/jobservice/opm"
 
 	"github.com/goharbor/harbor/src/jobservice/tests"
 	"github.com/goharbor/harbor/src/jobservice/utils"
@@ -16,7 +19,7 @@ func TestPeriodicEnqueuerStartStop(t *testing.T) {
 		lock:     new(sync.RWMutex),
 		policies: make(map[string]*PeriodicJobPolicy),
 	}
-	enqueuer := newPeriodicEnqueuer(ns, redisPool, ps)
+	enqueuer := newPeriodicEnqueuer(ns, redisPool, ps, nil)
 	enqueuer.start()
 	<-time.After(100 * time.Millisecond)
 	enqueuer.stop()
@@ -36,7 +39,11 @@ func TestEnqueue(t *testing.T) {
 	}
 	ps.add(pl)
 
-	enqueuer := newPeriodicEnqueuer(ns, redisPool, ps)
+	statsManager := opm.NewRedisJobStatsManager(context.Background(), ns, redisPool)
+	statsManager.Start()
+	defer statsManager.Shutdown()
+
+	enqueuer := newPeriodicEnqueuer(ns, redisPool, ps, statsManager)
 	if err := enqueuer.enqueue(); err != nil {
 		t.Error(err)
 	}

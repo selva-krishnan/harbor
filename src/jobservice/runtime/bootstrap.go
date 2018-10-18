@@ -16,12 +16,15 @@ import (
 	"github.com/goharbor/harbor/src/jobservice/config"
 	"github.com/goharbor/harbor/src/jobservice/core"
 	"github.com/goharbor/harbor/src/jobservice/env"
+	jsjob "github.com/goharbor/harbor/src/jobservice/job"
 	"github.com/goharbor/harbor/src/jobservice/job/impl"
 	"github.com/goharbor/harbor/src/jobservice/job/impl/gc"
 	"github.com/goharbor/harbor/src/jobservice/job/impl/replication"
 	"github.com/goharbor/harbor/src/jobservice/job/impl/scan"
 	"github.com/goharbor/harbor/src/jobservice/logger"
+	"github.com/goharbor/harbor/src/jobservice/models"
 	"github.com/goharbor/harbor/src/jobservice/pool"
+	"github.com/goharbor/harbor/src/jobservice/utils"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -85,6 +88,12 @@ func (bs *Bootstrap) LoadAndRun() {
 
 	// Initialize controller
 	ctl := core.NewController(backendPool)
+	// Keep the job launch func in the system context
+	var launchJobFunc jsjob.LaunchJobFunc = func(req models.JobRequest) (models.JobStats, error) {
+		return ctl.LaunchJob(req)
+	}
+	rootContext.SystemContext = context.WithValue(rootContext.SystemContext, utils.CtlKeyOfLaunchJobFunc, launchJobFunc)
+
 	// Start the API server
 	apiServer := bs.loadAndRunAPIServer(rootContext, config.DefaultConfig, ctl)
 	logger.Infof("Server is started at %s:%d with %s", "", config.DefaultConfig.Port, config.DefaultConfig.Protocol)

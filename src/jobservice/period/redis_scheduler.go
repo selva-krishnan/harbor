@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/goharbor/harbor/src/jobservice/errs"
+	"github.com/goharbor/harbor/src/jobservice/opm"
 
 	"github.com/robfig/cron"
 
@@ -37,12 +38,12 @@ type RedisPeriodicScheduler struct {
 }
 
 // NewRedisPeriodicScheduler is constructor of RedisPeriodicScheduler
-func NewRedisPeriodicScheduler(ctx *env.Context, namespace string, redisPool *redis.Pool) *RedisPeriodicScheduler {
+func NewRedisPeriodicScheduler(ctx *env.Context, namespace string, redisPool *redis.Pool, statsManager opm.JobStatsManager) *RedisPeriodicScheduler {
 	pstore := &periodicJobPolicyStore{
 		lock:     new(sync.RWMutex),
 		policies: make(map[string]*PeriodicJobPolicy),
 	}
-	enqueuer := newPeriodicEnqueuer(namespace, redisPool, pstore)
+	enqueuer := newPeriodicEnqueuer(namespace, redisPool, pstore, statsManager)
 
 	return &RedisPeriodicScheduler{
 		context:   ctx,
@@ -261,6 +262,8 @@ func (rps *RedisPeriodicScheduler) Load() error {
 		}
 
 		allPeriodicPolicies = append(allPeriodicPolicies, policy)
+
+		logger.Infof("Load periodic job policy %s for job %s: %s", policy.PolicyID, policy.JobName, policy.CronSpec)
 	}
 
 	if len(allPeriodicPolicies) > 0 {

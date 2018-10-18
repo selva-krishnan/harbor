@@ -26,6 +26,15 @@ type JobStatsManager interface {
 	//  error           : error if meet any problems
 	Retrieve(jobID string) (models.JobStats, error)
 
+	// Update the properties of the job stats
+	//
+	// jobID string                  : ID of the being retried job
+	// fieldAndValues ...interface{} : One or more properties being updated
+	//
+	// Returns:
+	//  error if update failed
+	Update(jobID string, fieldAndValues ...interface{}) error
+
 	// SetJobStatus will mark the status of job to the specified one
 	// Async method to retry
 	SetJobStatus(jobID string, status string)
@@ -79,4 +88,22 @@ type JobStatsManager interface {
 	// Returns:
 	//  error if meet any problems
 	ExpirePeriodicJobStats(jobID string) error
+
+	// Persist the links between upstream job and the executions.
+	//
+	// upstreamJobID string: ID of the upstream job
+	// executions  ...string: IDs of the execution jobs
+	//
+	// Returns:
+	//  error if meet any issues
+	AttachExecution(upstreamJobID string, executions ...string) error
+
+	// Get all the executions (IDs) fro the specified upstream Job.
+	//
+	// upstreamJobID string: ID of the upstream job
+	//
+	// Returns:
+	//  the ID list of the executions if no error occurred
+	//  or a non-nil error is returned
+	GetExecutions(upstreamJobID string) ([]string, error)
 }
